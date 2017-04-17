@@ -159,12 +159,91 @@ WHERE model IN (SELECT model
 				WHERE manufacturer = 'Gateway');
  
 # 6(a)
-FOR 
+CREATE VIEW NonCS(sid) AS # the students who takes non-CS classes
+	SELECT sid
+	FROM Enroll
+	WHERE dept <> 'CS'
+;
+
+SELECT sid
+FROM Enroll
+WHERE dept = 'CS' AND NOT IN NonCS;
 
 # 6(b)
+CREATE VIEW CScnum(cnum) AS # the course nums of all CS classes
+	SELECT cnum
+	FROM Enroll
+	WHERE dept = 'CS'
+;
 
+CREATE VIEW CSsid_cnum(sid, cnum) AS # CS cnum and all the students who take CS classes
+	SELECT sid, cnum
+	FROM Enroll
+	WHERE dept = 'CS'
+;
+
+# idea: All Students Who Take CS classes - Students Who Don't take All CS classes
+CREATE VIEW StudentsWhoTakeCS AS
+	SELECT DISTINCT sid
+	FROM CSsid_cnum
+;
+
+
+CREATE VIEW StudentWhoDontTakeAllCS(sid, cnum) AS
+	SELECT s.sid, cs.cnum
+	FROM StudentsWhoTakeCS s CROSS JOIN CS cs
+	EXCEPT
+	CSsid_cnum
+;
+
+SELECT DISTINCT sid
+FROM StudentsWhoTakeCS
+EXCEPT
+SELECT DISTINCT sid
+FROM StudentWhoDontTakeAllCS;
 
 # 6(c)
+
+# Find the student who are only enrolled in the CS classes
+# idea: compare the count of the student's all classes and CS classes, 
+#       if the counts are the same, means this student only enrolled in CS classes
+CREATE VIEW AllClassesCount(sid, count) AS
+	SELECT COUNT(DISTINCT cnum)
+	FROM Enroll
+	GROUP BY sid
+;
+
+CREATE VIEW CScount(sid, count) AS
+	SELECT COUNT(DISTINCT cnum)
+	FROM Enroll
+	WHERE dept = 'CS'
+	GROUP BY sid
+;
+
+SELECT all.sid
+FROM AllClassesCount all INNER JOIN CScount cs ON all.sid = cs.sid
+WHERE all.count = cs.count;
+
+
+
+# Find the students who are enrolled in all the CS classes 
+# idea: find the student who take the same count of CS classes as the count of all CS classes
+CREATE VIEW CScount(count) AS # count the number of CS classes offered in this quarter
+	SELECT COUNT(DISTINCT cnum)
+	FROM Enroll
+	WHERE dept = 'CS'
+;
+
+CREATE VIEW StudentCScount(sid, count) AS
+	SELECT COUNT(DISTINCT cnum)
+	FROM Enroll
+	WHERE dept = 'CS'
+	GROUP BY sid
+;
+
+SELECT s.sid
+FROM StudentCScount s, CScount c
+WHERE s.count = c.count;
 
 
 
