@@ -1,3 +1,16 @@
+# 1(a)
+SELECT person-name
+FROM Work
+WHERE salary < 20000;
+
+# 1(b)
+ π person-name (ϑ salary<20000 (Work))
+
+# 1(c)
+# Not the same. In the result of (a), a person's name may occure
+# more than once. In the result of (b), every person's is unique.
+
+
 # 2(a)
 
 SELECT person-name
