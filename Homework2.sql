@@ -15,28 +15,30 @@ WHERE salary < 20000;
 # use EXIST
 SELECT person-name
 FROM Work
-WHERE EXISTS (	SELECT person-name
-				FROM Work
-				GROUP BY person-name
-				HAVING SUM(salary) > (	SELECT SUM(w.salary)
-										FROM Work w, Employee e 
-										WHERE e.person-name = w.person-name
-										AND e.city = 'Los Angeles'
-										GROUP BY w.person-name
-									)
-
-			);
+WHERE EXISTS (	
+	SELECT person-name
+	FROM Work
+	GROUP BY person-name
+	HAVING SUM(salary) > (	
+		SELECT SUM(w.salary)
+		FROM Work w, Employee e 
+		WHERE e.person-name = w.person-name
+		AND e.city = 'Los Angeles'
+		GROUP BY w.person-name
+	)
+);
 
 # use IN
 SELECT person-name
 FROM Work
 GROUP BY person-name
-HAVING SUM(salary) > ALL (	SELECT SUM(w.salary)
-							FROM Work w, Employee e 
-							WHERE e.person-name = w.person-name
-							AND e.city IN ('Los Angeles')
-							GROUP BY w.person-name
-						);
+HAVING SUM(salary) > ALL (	
+	SELECT SUM(w.salary)
+	FROM Work w, Employee e 
+	WHERE e.person-name = w.person-name
+	AND e.city IN ('Los Angeles')
+	GROUP BY w.person-name
+);
 
 
 
@@ -46,20 +48,22 @@ HAVING SUM(salary) > ALL (	SELECT SUM(w.salary)
 # use EXIST
 SELECT DISTINCT manager-name
 FROM Manage m1
-WHERE EXISTS (	SELECT person-name
-				FROM Manage m2
-				WHERE m1.manager-name = m2.manager-name AND
-					(	SELECT SUM(salary) # manager salary 
-						FROM Work w
-						WHERE w.person-name = m2.manager-name 
-						GROUP BY m2.person-name
-					) > (
-						SELECT SUM(salary) # employee salary
-						FROM Work w 
-						WHERE w.person-name = m2.person-name 
-						GROUP BY m2.person-name
-					)
-			);
+WHERE EXISTS (	
+	SELECT person-name
+	FROM Manage m2
+	WHERE m1.manager-name = m2.manager-name 
+	AND (	
+		SELECT SUM(salary) # manager salary 
+		FROM Work w
+		WHERE w.person-name = m2.manager-name 
+		GROUP BY m2.person-name ) 
+	> (
+		SELECT SUM(salary) # employee salary
+		FROM Work w 
+		WHERE w.person-name = m2.person-name 
+		GROUP BY m2.person-name
+	)
+);
 
 # use IN
 CREATE VIEW ManagerEmployeeSalary(m-name, e-name, e-salary) AS 
@@ -121,10 +125,11 @@ FROM MovieExec;
 
 SELECT name
 FROM MovieStar
-WHERE NOT EXISTS (	SELECT s.name
-					FROM MovieStar s
-					INNER JOIN MovieExec e ON s.name = e.name
-					);
+WHERE NOT EXISTS (	
+	SELECT s.name
+	FROM MovieStar s
+	INNER JOIN MovieExec e ON s.name = e.name
+);
 
 # 4(a)
 SELECT AVG(speed)
@@ -133,9 +138,10 @@ FROM Desktop;
 # 4(b)
 SELECT AVG(price)
 FROM ComputerProduct
-WHERE model IN (SELECT model
-				FROM Laptop
-				WHERE weight < 2)
+WHERE model IN (
+	SELECT model
+	FROM Laptop
+	WHERE weight < 2)
 ;
 
 # 4(c)
@@ -175,23 +181,25 @@ WHERE model IN IBMbelow1000;
 
 DELETE FROM ComputerProduct
 WHERE model IN IBMbelow1000 AND 
-model NOT IN (	SELECT model
-				FROM Laptop
-			);
+model NOT IN (	
+	SELECT model
+	FROM Laptop
+);
 
 # 5(c)
 UPDATE Laptop
 SET weight = 1 + weight
-WHERE model IN (SELECT model
-				FROM ComputerProduct
-				WHERE manufacturer = 'Gateway');
+WHERE model IN (
+	SELECT model
+	FROM ComputerProduct
+	WHERE manufacturer = 'Gateway'
+);
  
 # 6(a)
 CREATE VIEW NonCS(sid) AS # the students who takes non-CS classes
 	SELECT sid
 	FROM Enroll
-	WHERE dept <> 'CS'
-;
+	WHERE dept <> 'CS';
 
 SELECT sid
 FROM Enroll
@@ -201,28 +209,24 @@ WHERE dept = 'CS' AND NOT IN NonCS;
 CREATE VIEW CScnum(cnum) AS # the course nums of all CS classes
 	SELECT cnum
 	FROM Enroll
-	WHERE dept = 'CS'
-;
+	WHERE dept = 'CS';
 
 CREATE VIEW CSsid_cnum(sid, cnum) AS # CS cnum and all the students who take CS classes
 	SELECT sid, cnum
 	FROM Enroll
-	WHERE dept = 'CS'
-;
+	WHERE dept = 'CS';
 
 # idea: All Students Who Take CS classes - Students Who Don't take All CS classes
 CREATE VIEW StudentsWhoTakeCS AS
 	SELECT DISTINCT sid
-	FROM CSsid_cnum
-;
+	FROM CSsid_cnum;
 
 
 CREATE VIEW StudentWhoDontTakeAllCS(sid, cnum) AS
 	SELECT s.sid, cs.cnum
 	FROM StudentsWhoTakeCS s CROSS JOIN CS cs
 	EXCEPT
-	CSsid_cnum
-;
+	CSsid_cnum;
 
 SELECT DISTINCT sid
 FROM StudentsWhoTakeCS
@@ -238,15 +242,13 @@ FROM StudentWhoDontTakeAllCS;
 CREATE VIEW AllClassesCount(sid, count) AS
 	SELECT COUNT(DISTINCT cnum)
 	FROM Enroll
-	GROUP BY sid
-;
+	GROUP BY sid;
 
 CREATE VIEW CScount(sid, count) AS
 	SELECT COUNT(DISTINCT cnum)
 	FROM Enroll
 	WHERE dept = 'CS'
-	GROUP BY sid
-;
+	GROUP BY sid;
 
 SELECT all.sid
 FROM AllClassesCount all INNER JOIN CScount cs ON all.sid = cs.sid
@@ -259,15 +261,13 @@ WHERE all.count = cs.count;
 CREATE VIEW CScount(count) AS # count the number of CS classes offered in this quarter
 	SELECT COUNT(DISTINCT cnum)
 	FROM Enroll
-	WHERE dept = 'CS'
-;
+	WHERE dept = 'CS';
 
 CREATE VIEW StudentCScount(sid, count) AS
 	SELECT COUNT(DISTINCT cnum)
 	FROM Enroll
 	WHERE dept = 'CS'
-	GROUP BY sid
-;
+	GROUP BY sid;
 
 SELECT s.sid
 FROM StudentCScount s, CScount c
