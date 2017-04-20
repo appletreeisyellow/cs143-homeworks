@@ -12,49 +12,75 @@ WHERE salary < 20000;
 
 
 # 2(a)
-
-SELECT person-name
-FROM Work
-WHERE salary > ALL (	SELECT Work.salary
-						FROM Employee JOIN Work ON Employee.person-name = Work.person-name
-						WHERE Employee.city IN ('Los Angeles')
-					);
-
-
-
+# use EXIST
 SELECT person-name
 FROM Work
 WHERE EXISTS (	SELECT person-name
 				FROM Work
-				WHERE salary > (SELECT MAX(Work.salary)
-								FROM Employee JOIN Work ON Employee.person-name = Work.person-name
-								WHERE Employee.city = 'Los Angeles')
-				);
+				GROUP BY person-name
+				HAVING SUM(salary) > (	SELECT SUM(w.salary)
+										FROM Work w, Employee e 
+										WHERE e.person-name = w.person-name
+										AND e.city = 'Los Angeles'
+										GROUP BY w.person-name
+									)
+
+			);
+
+# use IN
+SELECT person-name
+FROM Work
+GROUP BY person-name
+HAVING SUM(salary) > ALL (	SELECT SUM(w.salary)
+							FROM Work w, Employee e 
+							WHERE e.person-name = w.person-name
+							AND e.city IN ('Los Angeles')
+							GROUP BY w.person-name
+						);
+
+
+
 
 
 # 2(b)
+# use EXIST
+SELECT DISTINCT manager-name
+FROM Manage m1
+WHERE EXISTS (	SELECT person-name
+				FROM Manage m2
+				WHERE m1.manager-name = m2.manager-name AND
+					(	SELECT SUM(salary) # manager salary 
+						FROM Work w
+						WHERE w.person-name = m2.manager-name 
+						GROUP BY m2.person-name
+					) > (
+						SELECT SUM(salary) # employee salary
+						FROM Work w 
+						WHERE w.person-name = m2.person-name 
+						GROUP BY m2.person-name
+					)
+			);
+
+# use IN
+CREATE VIEW ManagerEmployeeSalary(m-name, e-name, e-salary) AS 
+	SELECT m.manager-name, m.person-name, e.salary
+	FROM Manage m, Work e
+	WHERE m.person-name = e.person-name
+;
+
+CREATE VIEW ManagerMinEmployeeSalary(m-name, e-minSalary) AS 
+# e-minSalary is the minimum salary among all the employee of one manager
+	SELECT m-name, MIN(e-salary)
+	FROM ManagerEmployeeSalary
+	GROUP BY m-name
+;
 
 SELECT DISTINCT manager-name
-FROM Manage
-WHERE EXISTS (	SELECT	DISTINCT Manage.manager-name
-				FROM Manage 
-				INNER JOIN Work e ON Manage.person-name = e.person-name
-				INNER JOIN Work m ON Manage.manager-name = m.person-name
-				WHERE m.salary > e.salary
-				); # it these INNER joins correct?
+FROM Manage m, Work w, ManagerMinEmployeeSalary me
+WHERE m.manager-name = w.person-name 
+AND M.manager-name = me.manager-name
+AND w.salary > me.e-minSalary
 
-SELECT DISTINCT manager-name
-FROM Manage
-WHERE manager-name IN (	SELECT DISTINCT manager-name
-						FROM (
-								SELECT Manage.manager-name AS manager-name, m.salary AS manager-salary, MIN(e.salary) AS min-employ-salary
-								FROM Manage 
-								INNER JOIN Work e ON Manage.person-name = e.person-name
-								INNER JOIN Work m ON Manage.manager-name = m.person-name
-								GROUP BY manager-name
-							) # Can I do this?
-						WHERE manager-salary > min-employ-salary
-						);
 
 
 # 3(a) i 
@@ -118,37 +144,23 @@ FROM ComputerProduct
 WHERE manufacturer = 'Dell';
 
 # 4(d)
-CREATE VIEW ModelSpeed(model, speed) AS
-	SELECT model, speed
-	FROM Desktop
-	UNION
-	SELECT model, speed
-	FROM Laptop
-;
-
-SELECT speed, AVG(speed)
-FROM ModelSpeed s 
-INNER JOIN ComputerProduct p ON s.model = p.modelCount
-GROUP BY speed;
+SELECT AVG(c.price)
+FROM Laptop l, ComputerProduct c
+WHERE l.model = c.model
+GROUP BY l.speed
 
 # 4(e)
-CREATE VIEW ManuModelCount(manu, modelCount) AS
-	SELECT manufacturer, COUNT(model)
-	FROM ComputerProduct
-	GROUP BY manufacturer
-;
-
-SELECT manu
-FROM ManuModelCount m
-WHERE m.modelCount >= 3;
-
+SELECT manufacturer
+FROM ComputerProduct
+GROUP BY manufacturer
+HAVING COUNT(model) >= 3;
 
 # 5(a)
 INSERT INTO ComputerProduct 
 	VALUES ('HP', 1200, 1000);
 
 INSERT INTO Desktop
-	VALUES (1200, 1.2, 256, 80);
+	VALUES (1200, '1.2GHz', '256MB', '80GB');
 
 # 5(b)
 CREATE VIEW IBMbelow1000(model) AS 
@@ -162,7 +174,10 @@ DELETE FROM Desktop
 WHERE model IN IBMbelow1000;
 
 DELETE FROM ComputerProduct
-WHERE model IN IBMbelow1000;
+WHERE model IN IBMbelow1000 AND 
+model NOT IN (	SELECT model
+				FROM Laptop
+			);
 
 # 5(c)
 UPDATE Laptop
